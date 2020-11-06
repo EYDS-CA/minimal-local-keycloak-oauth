@@ -1,0 +1,51 @@
+
+version: "3"
+
+services:
+  app:
+    image: jmalloc/echo-server
+
+  keycloak:
+    image: jboss/keycloak
+    ports:
+      - 8080:8080
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=password
+      # Auto-imported realm config
+      - KEYCLOAK_IMPORT=/tmp/echo-realm.json
+    volumes:
+      - ./echo-realm.json:/tmp/echo-realm.json
+    healthcheck:
+      test: curl -f localhost:8080 || exit -1
+    networks:
+      default:
+        aliases:
+          # DNS lookup for keycloak.local.freshworks.club will resolve to this service 
+          # within this docker network
+          - keycloak.local.freshworks.club
+    
+  oauth-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy 
+    command: 
+      - --email-domain=freshworks.io
+      - --http-address=0.0.0.0:8081
+      - --provider=oidc
+      - --client-id=echo-client
+      - --client-secret=super-secret
+      # Will visit http://keycloak.local.freshworks.club:8080/auth/realms/echo/.well-known/openid-configuration
+      # to perform OIDC "discovery"
+      - --oidc-issuer-url=http://keycloak.local.freshworks.club:8080/auth/realms/echo
+      # Upstream is the host that requests are proxied to
+      - --upstream=http://app:8080
+      # No HTTPS means we turn this off
+      - --cookie-secure=false
+      - --cookie-secret=omgsosecret12345
+    depends_on: 
+      app:
+        condition: service_started
+      # Means it will not start until it can successfully complete oidc discovery
+      keycloak:
+        condition: service_healthy
+    ports:
+      - 8081:8081

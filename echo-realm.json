@@ -1,0 +1,17 @@
+{
+    "realm": "echo",
+    "enabled": true,
+    "sslRequired": "none",
+    "registrationAllowed": false,
+    "requiredCredentials": [
+        "password"
+    ],
+    "clients": [
+        {
+            "clientId": "echo-client",
+            "enabled": true,
+            "secret": "super-secret",
+            "redirectUris": ["*"]
+        }
+    ]
+}
